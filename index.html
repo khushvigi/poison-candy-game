@@ -2,39 +2,79 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Poison Candy Game</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
   <h1>Poison Candy Game</h1>
 
-  <!-- Player Setup Section (you can expand this as needed) -->
-  <div id="player-setup" class="player-setup">
-    <h2>Set Player Names and Avatars</h2>
+  <div class="player-setup" id="player-setup">
     <div>
-      <label>Player 1 Name: <input type="text" id="player1-name" /></label>
-      <!-- Avatar selection UI can go here -->
+      <h2>Player 1: Enter your name</h2>
+      <input type="text" id="player1-name" />
+      <h3>Select your avatar</h3>
+      <div class="avatar-options" id="player1-avatars"></div>
     </div>
+
     <div>
-      <label>Player 2 Name: <input type="text" id="player2-name" /></label>
-      <!-- Avatar selection UI can go here -->
+      <h2>Player 2: Enter your name</h2>
+      <input type="text" id="player2-name" />
+      <h3>Select your avatar</h3>
+      <div class="avatar-options" id="player2-avatars"></div>
     </div>
+
+    <button id="start-game">Start Game</button>
   </div>
 
-  <!-- Turn Indicator -->
-  <div id="turn-indicator">Player 1, pick your poison candy</div>
+  <div id="turn-indicator"></div>
 
-  <!-- Candy Grid -->
   <div id="candy-grid"></div>
 
-  <!-- Result Message -->
   <div id="result-message"></div>
 
-  <!-- Reset Game Button -->
   <button onclick="resetGame()">Reset Game</button>
 
   <script src="script.js"></script>
+  <script>
+    const avatars = [
+      'avatars/Dino 2.png',
+      'avatars/Dino 3.png',
+      'avatars/Dino 4.png',
+      'avatars/Dino 5.png'
+    ];
+
+    function renderAvatars(containerId, playerIndex) {
+      const container = document.getElementById(containerId);
+      avatars.forEach((src, index) => {
+        const img = document.createElement('img');
+        img.src = src;
+        img.addEventListener('click', () => {
+          document.querySelectorAll(`#${containerId} img`).forEach(i => i.classList.remove('selected'));
+          img.classList.add('selected');
+          players[playerIndex].avatar = src;
+        });
+        container.appendChild(img);
+      });
+    }
+
+    document.getElementById('start-game').addEventListener('click', () => {
+      const name1 = document.getElementById('player1-name').value.trim();
+      const name2 = document.getElementById('player2-name').value.trim();
+      if (!name1 || !name2 || !players[0].avatar || !players[1].avatar) {
+        alert('Please enter names and select avatars for both players.');
+        return;
+      }
+      players[0].name = name1;
+      players[1].name = name2;
+      document.getElementById('player-setup').classList.add('hidden');
+      resetGame();
+    });
+
+    window.onload = () => {
+      renderAvatars('player1-avatars', 0);
+      renderAvatars('player2-avatars', 1);
+    };
+  </script>
 </body>
 </html>
