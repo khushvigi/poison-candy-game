@@ -1,3 +1,9 @@
+// script.js
+
+let poisonSelectionPhase = true; // true when players are picking poison candies
+let currentPoisonPicker = 1;     // 1 means Player 1 chooses, 2 means Player 2 chooses
+let poisonCandies = {1: null, 2: null}; // store poison candies chosen by players
+
 const avatars = [
   'avatars/Dino 2.png',
   'avatars/Dino 3.png',
@@ -11,211 +17,176 @@ let players = [
 ];
 
 let candies = [];
-let candyCount = 21;
-let currentPlayer = 0;
-let gameStarted = false;
-let gameOver = false;
-let wins = [0, 0];
+const candyCount = 21;
 
-// DOM Elements
-const playerSetupDivs = document.querySelectorAll('.player-setup');
-const nameInputs = [document.getElementById('player1-name'), document.getElementById('player2-name')];
-const avatarContainers = document.querySelectorAll('.avatar-options');
-const candyGrid = document.getElementById('candy-grid');
-const candyGridPlay = document.getElementById('candy-grid-play');
-const turnIndicator = document.getElementById('turn-indicator');
-const resultMessage = document.getElementById('result-message');
-const winTable = document.getElementById('win-table');
-const restartBtn = document.getElementById('restart-btn');
+let currentPlayerIndex = 0; // 0 or 1
 
-// Initialize avatar options in UI
-avatarContainers.forEach((container, playerIndex) => {
-  avatars.forEach((src, i) => {
-    const img = document.createElement('img');
-    img.src = src;
-    img.alt = `Avatar ${i + 1}`;
-    img.addEventListener('click', () => {
-      selectAvatar(playerIndex, src, img);
-    });
-    container.appendChild(img);
-  });
-});
-
-// Avatar selection logic
-function selectAvatar(playerIndex, src, imgElement) {
-  // Remove selected from other avatars for this player
-  avatarContainers[playerIndex].querySelectorAll('img').forEach(img => {
-    img.classList.remove('selected');
-  });
-  // Mark this avatar as selected
-  imgElement.classList.add('selected');
-  players[playerIndex].avatar = src;
-}
-
-// Setup button
-document.getElementById('setup-btn').addEventListener('click', () => {
-  if (
-    !nameInputs[0].value.trim() ||
-    !nameInputs[1].value.trim() ||
-    !players[0].avatar ||
-    !players[1].avatar
-  ) {
-    alert('Please enter names and select avatars for both players.');
-    return;
-  }
-  players[0].name = nameInputs[0].value.trim();
-  players[1].name = nameInputs[1].value.trim();
-
-  startPoisonCandyChoice();
-});
-
-function startPoisonCandyChoice() {
-  // Hide player setup divs and show poison candy selection
-  playerSetupDivs.forEach(div => div.classList.add('hidden'));
-  candyGrid.classList.remove('hidden');
-  candyGridPlay.classList.add('hidden');
-  turnIndicator.textContent = `${players[0].name}, select your poison candy`;
-  resultMessage.textContent = '';
-  gameStarted = false;
-  gameOver = false;
-  currentPlayer = 0;
+// Initialize candies
+function createCandies() {
   candies = [];
-
-  // Create candies for selection
-  candyGrid.innerHTML = '';
   for (let i = 1; i <= candyCount; i++) {
-    const candy = document.createElement('div');
-    candy.classList.add('candy');
-    candy.style.backgroundColor = getCandyColor(i);
-    candy.dataset.id = i;
-    candy.addEventListener('click', poisonCandySelect);
-    candyGrid.appendChild(candy);
-    candies.push(candy);
+    candies.push({ id: i.toString(), eaten: false });
   }
 }
 
-function getCandyColor(i) {
-  // 21 candy colors - you can customize colors here:
-  const colors = [
-    '#FF6347', '#FFD700', '#40E0D0', '#FF69B4', '#8A2BE2',
-    '#7FFF00', '#FF4500', '#00FFFF', '#FF1493', '#1E90FF',
-    '#FF8C00', '#00FF7F', '#FF00FF', '#ADFF2F', '#DC143C',
-    '#00CED1', '#FFB6C1', '#7B68EE', '#FFA500', '#48D1CC', '#C71585'
-  ];
-  return colors[(i - 1) % colors.length];
-}
-
-function poisonCandySelect(e) {
-  if (gameOver) return;
-  const candyId = Number(e.target.dataset.id);
-
-  // Set poison candy for current player
-  players[currentPlayer].poisonCandy = candyId;
-
-  // Visually mark chosen poison candy
-  e.target.style.border = '3px solid red';
-
-  currentPlayer++;
-
-  if (currentPlayer === 2) {
-    // Both players chosen poison candy
-    startGamePlay();
-  } else {
-    turnIndicator.textContent = `${players[currentPlayer].name}, select your poison candy`;
-  }
-}
-
-function startGamePlay() {
-  gameStarted = true;
-  currentPlayer = 0;
-  candyGrid.classList.add('hidden');
-  candyGridPlay.classList.remove('hidden');
-  resultMessage.textContent = '';
-  turnIndicator.textContent = `${players[currentPlayer].name}'s turn to eat a candy`;
-
-  // Setup candies for gameplay (all uneaten)
-  candyGridPlay.innerHTML = '';
-  candies.forEach(c => {
-    c.classList.remove('eaten');
-    c.style.border = '';
-    candyGridPlay.appendChild(c);
+// Render candies on the grid
+function renderCandies() {
+  const candyGrid = document.getElementById('candy-grid');
+  candyGrid.innerHTML = '';
+  candies.forEach(candy => {
+    const candyDiv = document.createElement('div');
+    candyDiv.classList.add('candy');
+    candyDiv.dataset.id = candy.id;
+    candyDiv.textContent = candy.id;
+    if (candy.eaten) {
+      candyDiv.classList.add('eaten');
+      candyDiv.style.pointerEvents = 'none';
+      candyDiv.style.opacity = '0.4';
+    }
+    candyGrid.appendChild(candyDiv);
   });
 
-  candies.forEach(c => {
-    c.addEventListener('click', candyEat);
+  // Attach event listeners after rendering
+  const candyElements = document.querySelectorAll('.candy');
+  candyElements.forEach(candy => {
+    candy.addEventListener('click', onCandyClick);
   });
 }
 
-function candyEat(e) {
-  if (gameOver || !gameStarted) return;
-
-  const candyId = Number(e.target.dataset.id);
-  const eater = players[currentPlayer];
-  const opponent = players[1 - currentPlayer];
-
-  // Check if candy is already eaten
-  if (e.target.classList.contains('eaten')) return;
-
-  // Eat candy visually
-  e.target.classList.add('eaten');
-  eater.eatenCandies.push(candyId);
-
-  // Check poison candy condition
-  if (candyId === opponent.poisonCandy) {
-    // Opponent's poison candy eaten -> game over
-    gameOver = true;
-    resultMessage.textContent = 'Poison';
-    resultMessage.style.color = 'darkred';
-    turnIndicator.textContent = `${eater.name} wins!`;
-    wins[currentPlayer]++;
-    updateWinTable();
-    restartBtn.classList.remove('hidden');
-    return;
-  }
-
-  // Safe candy eaten
-  currentPlayer = 1 - currentPlayer;
-  turnIndicator.textContent = `${players[currentPlayer].name}'s turn to eat a candy`;
+// Update turn indicator text
+function updateTurnIndicator(text) {
+  const turnIndicator = document.getElementById('turn-indicator');
+  turnIndicator.textContent = text;
 }
 
-restartBtn.addEventListener('click', () => {
-  resetGame();
-});
-
-function updateWinTable() {
-  winTable.innerHTML = `
-    <h3>Win Table</h3>
-    <p>${players[0].name}: ${wins[0]}</p>
-    <p>${players[1].name}: ${wins[1]}</p>
-  `;
+// Show result message
+function showResult(message) {
+  const resultMessage = document.getElementById('result-message');
+  resultMessage.textContent = message;
 }
 
+// Reset game state and UI
 function resetGame() {
-  // Reset everything to start setup again
-  gameStarted = false;
-  gameOver = false;
-  currentPlayer = 0;
-  players.forEach(p => {
-    p.poisonCandy = null;
-    p.eatenCandies = [];
-  });
-  restartBtn.classList.add('hidden');
-  playerSetupDivs.forEach(div => div.classList.remove('hidden'));
-  candyGrid.classList.add('hidden');
-  candyGridPlay.classList.add('hidden');
-  resultMessage.textContent = '';
-  turnIndicator.textContent = '';
-  candies.forEach(c => {
-    c.classList.remove('eaten');
-    c.style.border = '';
-  });
-
-  // Clear avatar selections
-  avatarContainers.forEach(container => {
-    container.querySelectorAll('img').forEach(img => {
-      img.classList.remove('selected');
-    });
-  });
-  nameInputs.forEach(input => (input.value = ''));
+  poisonSelectionPhase = true;
+  currentPoisonPicker = 1;
+  poisonCandies = {1: null, 2: null};
+  players = [
+    { name: '', avatar: '', poisonCandy: null, eatenCandies: [] },
+    { name: '', avatar: '', poisonCandy: null, eatenCandies: [] }
+  ];
+  currentPlayerIndex = 0;
+  createCandies();
+  renderCandies();
+  updateTurnIndicator('Player 1, pick your poison candy');
+  showResult('');
+  // Clear inputs and avatar selections if any (implement as needed)
+  localStorage.clear();
 }
 
+// Handle candy clicks
+function onCandyClick(event) {
+  const candyId = event.target.dataset.id;
+
+  if (poisonSelectionPhase) {
+    // Selecting poison candies
+    if (poisonCandies[currentPoisonPicker] === candyId) {
+      alert("You already selected this candy! Pick another one.");
+      return;
+    }
+    poisonCandies[currentPoisonPicker] = candyId;
+    alert(`Player ${currentPoisonPicker} picked poison candy #${candyId}`);
+
+    if (currentPoisonPicker === 1) {
+      currentPoisonPicker = 2;
+      updateTurnIndicator('Player 2, pick your poison candy');
+    } else {
+      // Both poison candies selected
+      poisonSelectionPhase = false;
+      players[0].poisonCandy = poisonCandies[1];
+      players[1].poisonCandy = poisonCandies[2];
+      updateTurnIndicator("Player 1's turn to eat a candy");
+      saveGameState();
+    }
+  } else {
+    // Normal candy eating phase
+    if (candies.find(c => c.id === candyId).eaten) {
+      alert('This candy is already eaten!');
+      return;
+    }
+
+    // Mark candy eaten
+    candies.forEach(c => {
+      if (c.id === candyId) c.eaten = true;
+    });
+    renderCandies();
+
+    // Add candy to current player's eaten candies
+    players[currentPlayerIndex].eatenCandies.push(candyId);
+
+    // Check if player ate opponent's poison candy - game over
+    const opponentIndex = (currentPlayerIndex === 0) ? 1 : 0;
+    if (candyId === players[opponentIndex].poisonCandy) {
+      showResult(`Player ${currentPlayerIndex + 1} ate opponent's poison candy! Player ${opponentIndex + 1} wins!`);
+      updateTurnIndicator('Game Over');
+      localStorage.clear();
+      return;
+    }
+
+    // Check if all candies are eaten - draw or game end
+    const uneatenCandies = candies.filter(c => !c.eaten);
+    if (uneatenCandies.length === 0) {
+      showResult("All candies eaten! It's a draw!");
+      updateTurnIndicator('Game Over');
+      localStorage.clear();
+      return;
+    }
+
+    // Switch turns
+    currentPlayerIndex = opponentIndex;
+    updateTurnIndicator(`Player ${currentPlayerIndex + 1}'s turn to eat a candy`);
+    saveGameState();
+  }
+}
+
+// Save game state to localStorage
+function saveGameState() {
+  const state = {
+    poisonSelectionPhase,
+    currentPoisonPicker,
+    poisonCandies,
+    players,
+    candies,
+    currentPlayerIndex
+  };
+  localStorage.setItem('poisonCandyGameState', JSON.stringify(state));
+}
+
+// Load game state from localStorage
+function loadGameState() {
+  const savedState = localStorage.getItem('poisonCandyGameState');
+  if (savedState) {
+    const state = JSON.parse(savedState);
+    poisonSelectionPhase = state.poisonSelectionPhase;
+    currentPoisonPicker = state.currentPoisonPicker;
+    poisonCandies = state.poisonCandies;
+    players = state.players;
+    candies = state.candies;
+    currentPlayerIndex = state.currentPlayerIndex;
+    renderCandies();
+
+    if (poisonSelectionPhase) {
+      updateTurnIndicator(`Player ${currentPoisonPicker}, pick your poison candy`);
+    } else {
+      updateTurnIndicator(`Player ${currentPlayerIndex + 1}'s turn to eat a candy`);
+    }
+  } else {
+    resetGame();
+  }
+}
+
+// Initialize
+window.onload = function () {
+  loadGameState();
+};
+
+// You can add other helper functions for avatar selection, player names etc as needed.
