@@ -2,36 +2,39 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Poison Candy Game</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+
   <h1>Poison Candy Game</h1>
 
-  <div class="player-setup" id="player-setup">
-    <h2>Player Setup</h2>
+  <!-- Player Setup Section (you can expand this as needed) -->
+  <div id="player-setup" class="player-setup">
+    <h2>Set Player Names and Avatars</h2>
     <div>
-      <label>Player 1 Name:</label>
-      <input type="text" id="player1-name" />
+      <label>Player 1 Name: <input type="text" id="player1-name" /></label>
+      <!-- Avatar selection UI can go here -->
     </div>
-    <div class="avatar-selection" id="player1-avatars">
-      <!-- Avatars will load here -->
-    </div>
-
     <div>
-      <label>Player 2 Name:</label>
-      <input type="text" id="player2-name" />
+      <label>Player 2 Name: <input type="text" id="player2-name" /></label>
+      <!-- Avatar selection UI can go here -->
     </div>
-    <div class="avatar-selection" id="player2-avatars">
-      <!-- Avatars will load here -->
-    </div>
-
-    <button onclick="startGame()">Start Game</button>
   </div>
 
-  <div id="game-area" class="hidden">
-    <h2 id="turn-indicator"></h2>
+  <!-- Turn Indicator -->
+  <div id="turn-indicator">Player 1, pick your poison candy</div>
 
-    <div id="avatar-display-container">
-      <div class="avatar-display" id="avatar
+  <!-- Candy Grid -->
+  <div id="candy-grid"></div>
+
+  <!-- Result Message -->
+  <div id="result-message"></div>
+
+  <!-- Reset Game Button -->
+  <button onclick="resetGame()">Reset Game</button>
+
+  <script src="script.js"></script>
+</body>
+</html>
