@@ -1,31 +1,37 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Poison Candy Game</title>
-<link rel="stylesheet" href="style.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Poison Candy Game</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <h1>Poison Candy Game</h1>
 
-<h1>Poison Candy Game</h1>
-
-<div id="player-setup" class="player-setup">
-  <div>
-    <h2>Player 1 Name & Avatar</h2>
-    <input type="text" id="player1-name" placeholder="Enter name" />
-    <div class="avatar-options" id="player1-avatars">
-      <!-- Dinosaur avatars, example images below -->
-      <img src="avatars/dino1.png" alt="Dino 1" data-player="1" />
-      <img src="avatars/dino2.png" alt="Dino 2" data-player="1" />
-      <img src="avatars/dino3.png" alt="Dino 3" data-player="1" />
+  <div class="player-setup" id="player-setup">
+    <h2>Player Setup</h2>
+    <div>
+      <label>Player 1 Name:</label>
+      <input type="text" id="player1-name" />
     </div>
+    <div class="avatar-selection" id="player1-avatars">
+      <!-- Avatars will load here -->
+    </div>
+
+    <div>
+      <label>Player 2 Name:</label>
+      <input type="text" id="player2-name" />
+    </div>
+    <div class="avatar-selection" id="player2-avatars">
+      <!-- Avatars will load here -->
+    </div>
+
+    <button onclick="startGame()">Start Game</button>
   </div>
 
-  <div>
-    <h2>Player 2 Name & Avatar</h2>
-    <input type="text" id="player2-name" placeholder="Enter name" />
-    <div class="avatar-options" id="player2-avatars">
-      <img src="avatars/dino1.png" alt="Dino 1" data-player="2" />
-      <img src="avatars/dino2.png" alt="Dino 2" data-player="2" />
-      <img src="
+  <div id="game-area" class="hidden">
+    <h2 id="turn-indicator"></h2>
+
+    <div id="avatar-display-container">
+      <div class="avatar-display" id="avatar
