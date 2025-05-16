@@ -1,216 +1,221 @@
-// Candy data: 21 colors
-const candyColors = [
-  '#ff4d4d', '#ff944d', '#ffdb4d', '#d2ff4d', '#4dff4d', '#4dffc3',
-  '#4dd2ff', '#4d4dff', '#944dff', '#ff4dff', '#ff4dbf', '#ff4d7f',
-  '#ff704d', '#ffaf4d', '#ffe24d', '#bfff4d', '#4dff7f', '#4dffaf',
-  '#4dffe2', '#4dbfff', '#4d7fff'
+const avatars = [
+  'avatars/Dino 2.png',
+  'avatars/Dino 3.png',
+  'avatars/Dino 4.png',
+  'avatars/Dino 5.png'
 ];
 
 let players = [
-  { name: '', avatar: '', poisonCandy: null, wins: 0 },
-  { name: '', avatar: '', poisonCandy: null, wins: 0 },
+  { name: '', avatar: '', poisonCandy: null, eatenCandies: [] },
+  { name: '', avatar: '', poisonCandy: null, eatenCandies: [] }
 ];
 
-let turn = 0; // 0 or 1 for player index
-let candiesEaten = [];
-let gameActive = false;
+let candies = [];
+let candyCount = 21;
+let currentPlayer = 0;
+let gameStarted = false;
+let gameOver = false;
+let wins = [0, 0];
 
-const playerSetup = document.getElementById('player-setup');
-const gameArea = document.getElementById('game-area');
+// DOM Elements
+const playerSetupDivs = document.querySelectorAll('.player-setup');
+const nameInputs = [document.getElementById('player1-name'), document.getElementById('player2-name')];
+const avatarContainers = document.querySelectorAll('.avatar-options');
 const candyGrid = document.getElementById('candy-grid');
+const candyGridPlay = document.getElementById('candy-grid-play');
 const turnIndicator = document.getElementById('turn-indicator');
 const resultMessage = document.getElementById('result-message');
-const restartBtn = document.getElementById('restart-btn');
 const winTable = document.getElementById('win-table');
+const restartBtn = document.getElementById('restart-btn');
 
-const soundSafe = document.getElementById('sound-safe');
-const soundPoison = document.getElementById('sound-poison');
-const soundWin = document.getElementById('sound-win');
+// Initialize avatar options in UI
+avatarContainers.forEach((container, playerIndex) => {
+  avatars.forEach((src, i) => {
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = `Avatar ${i + 1}`;
+    img.addEventListener('click', () => {
+      selectAvatar(playerIndex, src, img);
+    });
+    container.appendChild(img);
+  });
+});
 
-function playSound(sound) {
-  sound.currentTime = 0;
-  sound.play();
+// Avatar selection logic
+function selectAvatar(playerIndex, src, imgElement) {
+  // Remove selected from other avatars for this player
+  avatarContainers[playerIndex].querySelectorAll('img').forEach(img => {
+    img.classList.remove('selected');
+  });
+  // Mark this avatar as selected
+  imgElement.classList.add('selected');
+  players[playerIndex].avatar = src;
 }
 
-function updateWinTable() {
-  winTable.innerHTML = `
-    <p>${players[0].name || 'Player 1'} Wins: ${players[0].wins}</p>
-    <p>${players[1].name || 'Player 2'} Wins: ${players[1].wins}</p>
-  `;
-}
-
-function selectAvatarHandler(event) {
-  if (event.target.tagName !== 'IMG') return;
-  const playerNum = event.target.dataset.player;
-  const container = playerNum === '1' ? document.getElementById('player1-avatars') : document.getElementById('player2-avatars');
-  Array.from(container.children).forEach(img => img.classList.remove('selected'));
-  event.target.classList.add('selected');
-  players[playerNum - 1].avatar = event.target.src;
-}
-
-function setupAvatars() {
-  document.getElementById('player1-avatars').addEventListener('click', selectAvatarHandler);
-  document.getElementById('player2-avatars').addEventListener('click', selectAvatarHandler);
-}
-
-function startGame() {
-  // get names
-  const p1name = document.getElementById('player1-name').value.trim();
-  const p2name = document.getElementById('player2-name').value.trim();
-  if (!p1name || !p2name) {
-    alert('Please enter names for both players!');
+// Setup button
+document.getElementById('setup-btn').addEventListener('click', () => {
+  if (
+    !nameInputs[0].value.trim() ||
+    !nameInputs[1].value.trim() ||
+    !players[0].avatar ||
+    !players[1].avatar
+  ) {
+    alert('Please enter names and select avatars for both players.');
     return;
   }
-  if (!players[0].avatar || !players[1].avatar) {
-    alert('Please select avatars for both players!');
-    return;
-  }
-  players[0].name = p1name;
-  players[1].name = p2name;
+  players[0].name = nameInputs[0].value.trim();
+  players[1].name = nameInputs[1].value.trim();
 
-  // Reset poison candy and candies eaten
-  players[0].poisonCandy = null;
-  players[1].poisonCandy = null;
-  candiesEaten = [];
-  gameActive = true;
-  turn = 0;
+  startPoisonCandyChoice();
+});
+
+function startPoisonCandyChoice() {
+  // Hide player setup divs and show poison candy selection
+  playerSetupDivs.forEach(div => div.classList.add('hidden'));
+  candyGrid.classList.remove('hidden');
+  candyGridPlay.classList.add('hidden');
+  turnIndicator.textContent = `${players[0].name}, select your poison candy`;
   resultMessage.textContent = '';
+  gameStarted = false;
+  gameOver = false;
+  currentPlayer = 0;
+  candies = [];
 
-  // Hide setup, show game
-  playerSetup.classList.add('hidden');
-  gameArea.classList.remove('hidden');
-
-  setupCandySelection();
-  updateTurnIndicator();
-
-  updateWinTable();
-}
-
-function setupCandySelection() {
+  // Create candies for selection
   candyGrid.innerHTML = '';
-  candyGrid.style.gridTemplateColumns = 'repeat(7, 60px)';
-
-  // Create candy elements for poison candy selection phase (21 candies)
-  candyColors.forEach((color, index) => {
+  for (let i = 1; i <= candyCount; i++) {
     const candy = document.createElement('div');
     candy.classList.add('candy');
-    candy.style.backgroundColor = color;
-    candy.dataset.index = index;
-    candy.dataset.phase = 'poison-select';
-    candy.title = `Candy #${index + 1}`;
-    candy.addEventListener('click', selectPoisonCandy);
+    candy.style.backgroundColor = getCandyColor(i);
+    candy.dataset.id = i;
+    candy.addEventListener('click', poisonCandySelect);
     candyGrid.appendChild(candy);
-  });
+    candies.push(candy);
+  }
 }
 
-function selectPoisonCandy(e) {
-  if (!gameActive) return;
-  const idx = Number(e.target.dataset.index);
-  const currentPlayer = players[turn];
+function getCandyColor(i) {
+  // 21 candy colors - you can customize colors here:
+  const colors = [
+    '#FF6347', '#FFD700', '#40E0D0', '#FF69B4', '#8A2BE2',
+    '#7FFF00', '#FF4500', '#00FFFF', '#FF1493', '#1E90FF',
+    '#FF8C00', '#00FF7F', '#FF00FF', '#ADFF2F', '#DC143C',
+    '#00CED1', '#FFB6C1', '#7B68EE', '#FFA500', '#48D1CC', '#C71585'
+  ];
+  return colors[(i - 1) % colors.length];
+}
 
-  if (currentPlayer.poisonCandy !== null) {
-    alert('You already chose your poison candy!');
-    return;
-  }
+function poisonCandySelect(e) {
+  if (gameOver) return;
+  const candyId = Number(e.target.dataset.id);
 
-  currentPlayer.poisonCandy = idx;
-  e.target.classList.add('selected');
-  e.target.style.border = `3px solid ${turn === 0 ? '#d63384' : '#3333ff'}`;
-  e.target.removeEventListener('click', selectPoisonCandy);
+  // Set poison candy for current player
+  players[currentPlayer].poisonCandy = candyId;
 
-  // Switch turn to next player or start candy eating phase if both chosen
-  if (players[0].poisonCandy !== null && players[1].poisonCandy !== null) {
-    startCandyEatingPhase();
+  // Visually mark chosen poison candy
+  e.target.style.border = '3px solid red';
+
+  currentPlayer++;
+
+  if (currentPlayer === 2) {
+    // Both players chosen poison candy
+    startGamePlay();
   } else {
-    turn = 1 - turn;
-    updateTurnIndicator();
+    turnIndicator.textContent = `${players[currentPlayer].name}, select your poison candy`;
   }
 }
 
-function startCandyEatingPhase() {
-  candiesEaten = [];
-  candyGrid.innerHTML = '';
-  candyGrid.style.gridTemplateColumns = 'repeat(7, 60px)';
+function startGamePlay() {
+  gameStarted = true;
+  currentPlayer = 0;
+  candyGrid.classList.add('hidden');
+  candyGridPlay.classList.remove('hidden');
+  resultMessage.textContent = '';
+  turnIndicator.textContent = `${players[currentPlayer].name}'s turn to eat a candy`;
 
-  candyColors.forEach((color, index) => {
-    const candy = document.createElement('div');
-    candy.classList.add('candy');
-    candy.style.backgroundColor = color;
-    candy.dataset.index = index;
-    candy.dataset.phase = 'eat';
-    candy.title = `Candy #${index + 1}`;
-    candy.addEventListener('click', candyEatHandler);
-    candyGrid.appendChild(candy);
+  // Setup candies for gameplay (all uneaten)
+  candyGridPlay.innerHTML = '';
+  candies.forEach(c => {
+    c.classList.remove('eaten');
+    c.style.border = '';
+    candyGridPlay.appendChild(c);
   });
 
-  turn = 0;
-  updateTurnIndicator();
+  candies.forEach(c => {
+    c.addEventListener('click', candyEat);
+  });
 }
 
-function candyEatHandler(e) {
-  if (!gameActive) return;
-  const candy = e.target;
-  const idx = Number(candy.dataset.index);
-  const currentPlayer = players[turn];
+function candyEat(e) {
+  if (gameOver || !gameStarted) return;
 
-  if (candiesEaten.includes(idx)) {
-    alert('Candy already eaten!');
-    return;
-  }
+  const candyId = Number(e.target.dataset.id);
+  const eater = players[currentPlayer];
+  const opponent = players[1 - currentPlayer];
 
-  candiesEaten.push(idx);
-  candy.classList.add('eaten');
-  candy.removeEventListener('click', candyEatHandler);
+  // Check if candy is already eaten
+  if (e.target.classList.contains('eaten')) return;
 
-  // Check if poison candy eaten by other player
-  const otherPlayer = players[1 - turn];
-  if (idx === otherPlayer.poisonCandy) {
-    // Poison eaten - other player wins
+  // Eat candy visually
+  e.target.classList.add('eaten');
+  eater.eatenCandies.push(candyId);
+
+  // Check poison candy condition
+  if (candyId === opponent.poisonCandy) {
+    // Opponent's poison candy eaten -> game over
+    gameOver = true;
     resultMessage.textContent = 'Poison';
-    resultMessage.style.color = 'red';
-    playSound(soundPoison);
-    otherPlayer.wins++;
+    resultMessage.style.color = 'darkred';
+    turnIndicator.textContent = `${eater.name} wins!`;
+    wins[currentPlayer]++;
     updateWinTable();
-    gameActive = false;
     restartBtn.classList.remove('hidden');
     return;
   }
 
   // Safe candy eaten
-  playSound(soundSafe);
-
-  // Switch turn
-  turn = 1 - turn;
-  updateTurnIndicator();
+  currentPlayer = 1 - currentPlayer;
+  turnIndicator.textContent = `${players[currentPlayer].name}'s turn to eat a candy`;
 }
 
-function updateTurnIndicator() {
-  if (!gameActive) {
-    turnIndicator.textContent = '';
-    return;
-  }
-  turnIndicator.textContent = `${players[turn].name}'s Turn`;
+restartBtn.addEventListener('click', () => {
+  resetGame();
+});
+
+function updateWinTable() {
+  winTable.innerHTML = `
+    <h3>Win Table</h3>
+    <p>${players[0].name}: ${wins[0]}</p>
+    <p>${players[1].name}: ${wins[1]}</p>
+  `;
 }
 
-function restartGame() {
-  playerSetup.classList.remove('hidden');
-  gameArea.classList.add('hidden');
+function resetGame() {
+  // Reset everything to start setup again
+  gameStarted = false;
+  gameOver = false;
+  currentPlayer = 0;
+  players.forEach(p => {
+    p.poisonCandy = null;
+    p.eatenCandies = [];
+  });
   restartBtn.classList.add('hidden');
+  playerSetupDivs.forEach(div => div.classList.remove('hidden'));
+  candyGrid.classList.add('hidden');
+  candyGridPlay.classList.add('hidden');
   resultMessage.textContent = '';
-  // Reset all game data
-  players[0].poisonCandy = null;
-  players[1].poisonCandy = null;
-  candiesEaten = [];
-  gameActive = false;
-  turn = 0;
+  turnIndicator.textContent = '';
+  candies.forEach(c => {
+    c.classList.remove('eaten');
+    c.style.border = '';
+  });
 
-  // Reset avatars selection UI
-  document.querySelectorAll('.avatar-options img').forEach(img => img.classList.remove('selected'));
-  document.getElementById('player1-name').value = '';
-  document.getElementById('player2-name').value = '';
+  // Clear avatar selections
+  avatarContainers.forEach(container => {
+    container.querySelectorAll('img').forEach(img => {
+      img.classList.remove('selected');
+    });
+  });
+  nameInputs.forEach(input => (input.value = ''));
 }
 
-document.getElementById('start-game-btn').addEventListener('click', startGame);
-restartBtn.addEventListener('click', restartGame);
-setupAvatars();
-updateWinTable();
